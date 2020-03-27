@@ -1,7 +1,33 @@
+<!DOCTYPE html>
 <html>
-<header><title>This is title</title></header>
-<script src="main.js"></script>
+<head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+    <meta content="utf-8" http-equiv="encoding">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script>
+        $(document).ready(function(){
+            $("button").click(function(){
+                // $.get("https://github.com/proggrammer/was/tree/master/derived_data/was_scala/predict_death_confirmed_recovered",
+                //     function(data, status){
+                //         alert("Data: " + data + "\nStatus: " + status);
+                //
+                // });
+                function logResults(json){
+                    alert(json);
+                }
+
+                $.ajax({
+                    url: "https://github.com/proggrammer/was/tree/master/derived_data/was_scala/predict_death_confirmed_recovered",
+                    dataType: "jsonp",
+                    jsonpCallback: "logResults"
+                });
+            });
+        });
+    </script>
+</head>
 <body>
-Hello worldd
+
+<button>Send an HTTP GET request to a page and get the result back</button>
+
 </body>
 </html>

@@ -12,7 +12,7 @@ object PredictDeathConfirmedRecovered {
   val WorldPopulation = 7800000000l;
   def r0(confirmedCases: List[Long], i: Int, avgIncubationPeriod:Int): (Long, Long, Double) = {
     (confirmedCases(i), confirmedCases(i+avgIncubationPeriod),
-      (confirmedCases(i+avgIncubationPeriod)-confirmedCases(i))*1.0/confirmedCases(i))
+      (confirmedCases(i+avgIncubationPeriod)-confirmedCases(i+avgIncubationPeriod-1))*1.0/confirmedCases(i))
   }
 
   //R0
@@ -22,11 +22,9 @@ object PredictDeathConfirmedRecovered {
 
   def extrapolation(confirmedCases: List[Long], avgIncubationPeriod: Int, numberOfDays: Int, lastDate:String, province:String):  EveryDayPrediction = {
     val r0 = reproductionNumberR0(confirmedCases, avgIncubationPeriod)
-
     val min = r0.minBy(_._3)._3
     val max = r0.maxBy(_._3)._3
-    val nowRate = (confirmedCases.last -
-      confirmedCases(confirmedCases.size-1-avgIncubationPeriod)).toDouble/confirmedCases(confirmedCases.size-1-avgIncubationPeriod)
+    val nowRate = r0.last._3
     val minR= extrapolateEach(confirmedCases, numberOfDays, min)
     val avgR = extrapolateEach(confirmedCases, numberOfDays, nowRate)
     val maxR = extrapolateEach(confirmedCases, numberOfDays, max)
@@ -38,9 +36,12 @@ object PredictDeathConfirmedRecovered {
     val listBuffer = new ListBuffer[Long]
     breakable(
       for(i <- 0 until numberOfDays)  {
-        val base = if(i<5) confirmedCases(confirmedCases.size-1-4+i) else listBuffer(i-4)
-        val updatedValue = base.toLong + (rate*base).round
+        val base = if(i<5) confirmedCases(confirmedCases.size-5+i) else listBuffer(i-5)
+        val previousDayConfirmed = if(i==0) confirmedCases(confirmedCases.size-1) else listBuffer(i-1)
+        val updatedValue = previousDayConfirmed + (rate*base).round
         listBuffer.append(updatedValue)
+//        if(base == 0 && updatedValue != base)
+//          println("ok")
         if(updatedValue>WorldPopulation) break()
       }
     )

@@ -41,6 +41,9 @@ class PredictTraitTest extends FunSuite {
     val confirmedGlobalReader = CSVReader.open(new File(curDir+"/data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv"))
 
     val confirmedGlobalFileContent = confirmedGlobalReader.all()
+
+    //val allProvince = confirmedGlobalFileContent.map(x=> (x(0),x(1)))
+
     val minDateS = confirmedGlobalFileContent.head(4)
     val maxDateS = confirmedGlobalFileContent.head.last
 
@@ -65,12 +68,51 @@ class PredictTraitTest extends FunSuite {
       val rString = rJson.prettyPrint
 
       import java.io._
-      val pw = new PrintWriter(new File(curDir + "/derived_data/was_scala/predict_death_confirmed_recovered/" +
-        lastDateS.toString.replace("/", "_") + ".json"))
+      val filff = new File(curDir + "/derived_data/was_scala/predict_death_confirmed_recovered/global/" +
+        lastDateS.toString.replace("/", "_") + ".json")
+      if(!filff.getParentFile.exists())
+        filff.getParentFile().mkdirs()
+      val pw = new PrintWriter(filff)
       pw.write(rString)
       pw.close
       lastDate = addDays(lastDate, 1)
       dayDiff +=1
+    }
+
+    val countryWiseFileContent = confirmedGlobalFileContent.tail.groupBy(_(1)).mapValues(_.map(_.drop(4).map(_.toLong)))
+    val reducedCountryWise =   countryWiseFileContent.mapValues(listOfList => listOfList.foldLeft(List.fill(listOfList.head.size)(0l))((r,next)=> (r, next).zipped.map(_ + _)))
+
+    for(kv <- reducedCountryWise)  {
+      val countryName = kv._1
+      val values = kv._2
+      var lastDate:Date = addDays(minDate, 6)
+      var dayDiff = 6
+      while(!lastDate.after(maxDate)) {
+            val lastDateS = dateFormatOutput.format(lastDate)
+            val dataTillNowAll: List[Long] = kv._2.take(dayDiff)
+            val firstNonZeroIndex = dataTillNowAll.zipWithIndex.find(_._1!=0l).getOrElse((0,dataTillNowAll.size))._2
+
+            val dataTillNow = dataTillNowAll.drop(firstNonZeroIndex)
+            if (dataTillNow.size >=6) {
+              val r = PredictDeathConfirmedRecovered.extrapolation(dataTillNow, 5, 1000, lastDateS,
+                countryName)
+              import MyJsonProtocol._
+              val rJson = r.toJson
+              val rString = rJson.prettyPrint
+
+              import java.io._
+              val filff = new File(curDir + "/derived_data/was_scala/predict_death_confirmed_recovered/" +
+                countryName.toLowerCase.replace(" ", "_") + "/" +
+                lastDateS.toString.replace("/", "_") + ".json")
+              if (!filff.getParentFile.exists())
+                filff.getParentFile().mkdirs()
+              val pw = new PrintWriter(filff)
+              pw.write(rString)
+              pw.close
+            }
+            lastDate = addDays(lastDate, 1)
+            dayDiff +=1
+          }
     }
   }
 }
